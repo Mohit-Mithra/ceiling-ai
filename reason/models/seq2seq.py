@@ -15,12 +15,12 @@ class Seq2seq(nn.Module):
     def sample_output(self, x, input_lengths=None):
         encoder_outputs, encoder_hidden = self.encoder(x, input_lengths)
         output_symbols, _ = self.decoder.forward_sample(encoder_outputs, encoder_hidden)
-        return torch.stack(output_symbols).transpose(0,1)   #change line
+        return np.concatenate((output_symbols)).transpose(output_symbols,(0,1))   #change line
 
     def reinforce_forward(self, x, input_lengths=None):
         encoder_outputs, encoder_hidden = self.encoder(x, input_lengths)
         self.output_symbols, self.output_logprobs = self.decoder.forward_sample(encoder_outputs, encoder_hidden, reinforce_sample=True)
-        return torch.stack(self.output_symbols).transpose(0,1)  #change line
+        return np.concatenate((self.output_symbols)).transpose(self.output_symbols,(0,1))  #change line
 
     def reinforce_backward(self, reward, entropy_factor=0.0):
         assert self.output_logprobs is not None and self.output_symbols is not None, 'must call reinforce_forward first'
@@ -29,7 +29,7 @@ class Seq2seq(nn.Module):
         for i, symbol in enumerate(self.output_symbols):
             if len(self.output_symbols[0].shape) == 1:
                 loss = - torch.diag(torch.index_select(self.output_logprobs[i], 1, symbol)).sum()*reward \
-                       + entropy_factor*(self.output_logprobs[i]*torch.exp(self.output_logprobs[i])).sum()  #change line
+                       + entropy_factor*(self.output_logprobs[i]*torch.exp(self.output_logprobs[i])).sum()  #change line #have to do this from scratch I believe.
             else:
                 loss = - self.output_logprobs[i]*reward
             losses.append(loss.sum())
