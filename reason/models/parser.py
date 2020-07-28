@@ -18,12 +18,12 @@ class Seq2seqParser():
         self.end_id = self.net_params['end_id']
         self.gpu_ids = opt.gpu_ids
         self.criterion = keras.losses.BinaryCrossentropy
-        if len(opt.gpu_ids) > 0 and torch.cuda.is_available():  # I have no clue about tf_gpu
+        if len(opt.gpu_ids) > 0 and torch.cuda.is_available():  # *********Look for TF GPU part
             self.seq2seq.cuda(opt.gpu_ids[0])
 
     def load_checkpoint(self, load_path):
         print('| loading checkpoint from %s' % load_path)
-        checkpoint = torch.load(load_path)
+        checkpoint = tf.saved_model.load(load_path)
         self.net_params = checkpoint['net_params']
         if 'fix_embedding' in vars(self.opt): # To do: change condition input to run mode
             self.net_params['fix_embedding'] = self.opt.fix_embedding
@@ -35,8 +35,8 @@ class Seq2seqParser():
             'net_params': self.net_params,
             'net_state': self.seq2seq.cpu().state_dict()
         }
-        torch.save(checkpoint, save_path)
-        if len(self.gpu_ids) > 0 and torch.cuda.is_available():
+        tf.saved_model.save(checkpoint, save_path)
+        if len(self.gpu_ids) > 0 and torch.cuda.is_available():         # *********Look for TF GPU part
             self.seq2seq.cuda(self.gpu_ids[0])
 
     def set_input(self, x, y=None):
@@ -99,7 +99,7 @@ class Seq2seqParser():
         return net_params
 
     def _sort_batch(self, x, y):
-        _, lengths = torch.eq(x, self.end_id).max(1)
+        _, lengths = torch.eq(x, self.end_id).max(1)             #idek what to do here
         lengths += 1
         lengths_sorted, idx_sorted = lengths.sort(0, descending=True)
         x_sorted = x[idx_sorted]
@@ -112,14 +112,15 @@ class Seq2seqParser():
     def _restore_order(self, x):
         if self.idx_sorted is not None:
             inv_idxs = self.idx_sorted.clone()
-            inv_idxs.scatter_(0, self.idx_sorted, torch.arange(x.size(0)).long())
+            inv_idxs.scatter_(0, self.idx_sorted, tf.cast(tf.range(x.size(0)), int64))
+            #inv_idxs.scatter_(0, self.idx_sorted, torch.arange(x.size(0)).long())
             return x[inv_idxs]
         return x
 
     def _to_var(self, x):
-        if len(self.gpu_ids) > 0 and torch.cuda.is_available():
+        if len(self.gpu_ids) > 0 and torch.cuda.is_available():                      # *********Look for TF GPU part
             x = x.cuda()
-        return Variable(x)
+        return tf.Variable(x)
 
     def _to_numpy(self, x):
-        return x.data.cpu().numpy().astype(float)
+        return x.data.cpu().numpy().astype(float)                                    # *********Look for TF GPU part

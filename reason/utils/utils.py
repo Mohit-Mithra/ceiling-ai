@@ -1,6 +1,7 @@
 import os
 import json
 import numpy as np
+import tensorflow as tf
 
 
 def mkdirs(paths):
@@ -58,4 +59,4 @@ def load_scenes(scenes_json):
     
 
 def load_embedding(path):
-    return np.load(path)
+    return tf.Tensor(np.load(path))
